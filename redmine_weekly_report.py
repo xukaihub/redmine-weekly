@@ -145,32 +145,79 @@ class RedmineWeeklyReport:
 
     def generate_yearly_summary(self, reports, user_id):
         """生成按项目分类的年度总结"""
-        # 按项目收集所有问题
         project_issues = defaultdict(list)
+        all_issues = []
         
         # 遍历所有周报，收集问题
         for monday, sunday, report in reports:
             activities = self.get_user_activities(user_id, monday, sunday)
             if activities['issues']:
+                all_issues.extend(activities['issues'])
                 categorized = self.categorize_issues(activities['issues'])
                 for project, issues in categorized.items():
                     project_issues[project].extend(issues)
         
         # 生成年度总结
-        summary = f"# {monday.year}年工作总结\n\n"  # 使用日期中的年份
+        summary = f"# {monday.year}年工作总结\n\n"
         
-        # 按项目生成总结
+        # 添加年度概述
+        summary += "## 年度概述\n\n"
+        
+        # 统计数据
+        total_issues = len(all_issues)
+        total_projects = len(project_issues)
+        status_count = defaultdict(int)
+        for issue in all_issues:
+            status = issue.status.name if hasattr(issue, 'status') else '未知状态'
+            status_count[status] += 1
+        
+        # 生成统计表格
+        summary += "### 数据统计\n\n"
+        summary += "| 指标 | 数值 |\n"
+        summary += "|------|------|\n"
+        summary += f"| 处理问题总数 | {total_issues} |\n"
+        summary += f"| 涉及项目数 | {total_projects} |\n"
+        for status, count in sorted(status_count.items()):
+            summary += f"| {status}问题数 | {count} |\n"
+        summary += "\n"
+        
+        # 项目分布
+        summary += "### 项目分布\n\n"
+        summary += "| 项目 | 问题数 | 占比 |\n"
+        summary += "|------|--------|------|\n"
+        for project, issues in sorted(project_issues.items(), key=lambda x: len(x[1]), reverse=True):
+            count = len(issues)
+            percentage = (count / total_issues) * 100
+            summary += f"| {project} | {count} | {percentage:.1f}% |\n"
+        summary += "\n"
+        
+        # 月度趋势
+        monthly_count = defaultdict(int)
+        for issue in all_issues:
+            month = issue.updated_on.strftime('%Y-%m')
+            monthly_count[month] += 1
+        
+        summary += "### 月度趋势\n\n"
+        summary += "| 月份 | 问题数 |\n"
+        summary += "|------|--------|\n"
+        for month in sorted(monthly_count.keys()):
+            summary += f"| {month} | {monthly_count[month]} |\n"
+        summary += "\n"
+        
+        # 添加分隔线
+        summary += "---\n\n"
+        
+        # 按项目详细列表
+        summary += "## 项目详细\n\n"
         for project_name in sorted(project_issues.keys()):
-            summary += f"## {project_name}\n\n"
-            # 按状态分类
+            summary += f"### {project_name}\n\n"
             status_issues = defaultdict(list)
             for issue in project_issues[project_name]:
                 status = issue.status.name if hasattr(issue, 'status') else '未知状态'
                 status_issues[status].append(issue)
             
-            # 按状态显示问题
             for status in sorted(status_issues.keys()):
-                summary += f"### {status}\n\n"
+                summary += f"#### {status}\n\n"
                 for issue in status_issues[status]:
                     summary += f"- [{issue.subject}]({self.redmine.url}/issues/{issue.id}) (#{issue.id})\n"
                 summary += "\n"
@@ -194,7 +241,7 @@ def main():
     # 加载配置
     config = load_config()
     
-    # 获取配置信���
+    # 获取配置信息
     REDMINE_URL = config['redmine']['url']
     USERNAME = config['redmine']['username']
     PASSWORD = config['redmine']['password']

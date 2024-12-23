@@ -37,6 +37,7 @@ ENV/
 
 # 生成的报告目录
 weekly_reports_*/
+yearly_summary_*.md
 
 # 操作系统
 .DS_Store
