@@ -143,6 +143,42 @@ class RedmineWeeklyReport:
         
         return report
 
+    def generate_yearly_summary(self, reports, user_id):
+        """生成按项目分类的年度总结"""
+        # 按项目收集所有问题
+        project_issues = defaultdict(list)
+        
+        # 遍历所有周报，收集问题
+        for monday, sunday, report in reports:
+            activities = self.get_user_activities(user_id, monday, sunday)
+            if activities['issues']:
+                categorized = self.categorize_issues(activities['issues'])
+                for project, issues in categorized.items():
+                    project_issues[project].extend(issues)
+        
+        # 生成年度总结
+        summary = f"# {monday.year}年工作总结\n\n"  # 使用日期中的年份
+        
+        # 按项目生成总结
+        for project_name in sorted(project_issues.keys()):
+            summary += f"## {project_name}\n\n"
+            # 按状态分类
+            status_issues = defaultdict(list)
+            for issue in project_issues[project_name]:
+                status = issue.status.name if hasattr(issue, 'status') else '未知状态'
+                status_issues[status].append(issue)
+            
+            # 按状态显示问题
+            for status in sorted(status_issues.keys()):
+                summary += f"### {status}\n\n"
+                for issue in status_issues[status]:
+                    summary += f"- [{issue.subject}]({self.redmine.url}/issues/{issue.id}) (#{issue.id})\n"
+                summary += "\n"
+            
+            summary += "---\n\n"
+        
+        return summary
+
 def load_config():
     """加载配置文件"""
     config = configparser.ConfigParser()
@@ -158,7 +194,7 @@ def main():
     # 加载配置
     config = load_config()
     
-    # 获取配置信息
+    # 获取配置信���
     REDMINE_URL = config['redmine']['url']
     USERNAME = config['redmine']['username']
     PASSWORD = config['redmine']['password']
@@ -187,18 +223,27 @@ def main():
                 f.write(report)
             print(f"Saved report to {filename}")
         
-        # 生成年度汇总报告
-        summary = f"# {YEAR}年工作周报汇总\n\n"
+        # 生成周报汇总
+        weekly_summary = f"# {YEAR}年工作周报汇总\n\n"
         for monday, sunday, report in reports:
             week_num = monday.isocalendar()[1]
-            summary += f"## 第{week_num}周 ({monday.strftime('%Y-%m-%d')} 至 {sunday.strftime('%Y-%m-%d')})\n\n"
-            summary += report + "\n---\n\n"
+            weekly_summary += f"## 第{week_num}周 ({monday.strftime('%Y-%m-%d')} 至 {sunday.strftime('%Y-%m-%d')})\n\n"
+            weekly_summary += report + "\n---\n\n"
         
-        # 保存年度汇总
-        summary_file = f'{report_dir}/yearly_summary_{YEAR}.md'
-        with open(summary_file, 'w', encoding='utf-8') as f:
-            f.write(summary)
-        print(f"Saved yearly summary to {summary_file}")
+        # 生成年度项目总结
+        yearly_summary = reporter.generate_yearly_summary(reports, USER_ID)
+        
+        # 保存周报汇总
+        weekly_summary_file = f'{report_dir}/weekly_summary_{YEAR}.md'
+        with open(weekly_summary_file, 'w', encoding='utf-8') as f:
+            f.write(weekly_summary)
+        print(f"Saved weekly summary to {weekly_summary_file}")
+        
+        # 保存年度项目总结
+        yearly_summary_file = f'{report_dir}/yearly_summary_{YEAR}.md'
+        with open(yearly_summary_file, 'w', encoding='utf-8') as f:
+            f.write(yearly_summary)
+        print(f"Saved yearly summary to {yearly_summary_file}")
     else:
         print("No reports generated.")
 
