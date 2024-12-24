@@ -27,7 +27,7 @@ class RedmineWeeklyReport:
         return last_monday.date(), last_sunday.date()
 
     def get_user_activities(self, user_id, start_date, end_date, only_assigned=False):
-        """获取指定用户在日���范围内的活动
+        """获取指定用户在日期范围内的活动
         
         Args:
             user_id: 用户ID
@@ -355,7 +355,10 @@ def main():
         weekly_summary = f"# {YEAR}年工作周报汇总\n\n"
         for monday, sunday, report in reports:
             week_num = monday.isocalendar()[1]
-            weekly_summary += f"## 第{week_num}周 ({monday.strftime('%Y-%m-%d')} 至 {sunday.strftime('%Y-%m-%d')})\n\n"
+            # 使用一级标题 (#) 作为周报标题
+            weekly_summary += f"# 第{week_num}周 ({monday.strftime('%Y-%m-%d')} 至 {sunday.strftime('%Y-%m-%d')})\n\n"
+            # 移除原报告中的一级标题，保留其他内容
+            report = report.replace("# 本周工作总结", "## 本周工作总结")
             weekly_summary += report + "\n---\n\n"
         
         # 生成年度项目总结
