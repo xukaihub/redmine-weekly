@@ -1,8 +1,5 @@
 [redmine]
-url = https://git.nationalchip.com/redmine
+url = redmine_url
 username = your-username
 password = your-password
 user_id = 1234
-
-[report]
-year = 2024 

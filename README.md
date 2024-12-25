@@ -1,28 +1,20 @@
 # Redmine Weekly Report Generator
 
-一个用于生成 Redmine 周报和年度工作总结的 Python 工具。
+一个用于生成 Redmine 周报和年度总结的工具。
 
 ## 功能特点
 
-- 自动获取 Redmine 上的工作记录
-- 按项目分类展示问题处理情况
-- 支持生成单周报告和年度汇总
-- 自动保存为 Markdown 格式文件
-- 支持中文项目名称和状态显示
-- 生成年度统计概述（含数据统计、项目分布、月度趋势）
-
-## 目录结构
-```
-├── README.md # 说明文档
-├── redmine_weekly_report.py # 主程序
-└── weekly_reports_2024/ # 生成的报告目录
-├── yearly_summary_2024.md # 年度汇总报告
-└── week_/ # 各周报告
-```
+- 生成指定日期所在周的工作报告
+- 生成当前周的工作报告
+- 生成整年的周报汇总
+- 生成年度工作总结
+- 支持按项目分类统计
+- 支持状态分布统计
+- 支持月度趋势分析
 
 ## 安装
 
-1. 克隆仓库：
+1. 克隆仓库:
 
 ```bash
 git clone https://github.com/xukaihub/redmine-weekly.git
@@ -36,94 +28,58 @@ source venv/bin/activate
 pip install python-redmine pytz
 ```
 
-## 配置
+3. 配置:
 
-创建 `config.ini` 配置文件：
+复制 `config.ini.example` 为 `config.ini` 并填写相关配置:
 
 ```ini
 [redmine]
-url = https://git.nationalchip.com/redmine  # Redmine服务器地址
-username = your-username                     # 用户名
-password = your-password                     # 密码
-user_id = 1234                              # 用户ID（数字）
-
-[report]
-year = 2024                                 # 要生成报告的年份
+url = https://your-redmine-url
+username = your-username
+password = your-password
+user_id = your-user-id
 ```
 
 ## 使用方法
 
-1. 复制并修改配置文件：
-```bash
-cp config.ini.example config.ini
-# 编辑 config.ini 填入你的配置
-```
+### 基本用法
 
-2. 运行程序生成报告：
 ```bash
+# 生成本周的周报
 python redmine_weekly_report.py
+
+# 生成指定日期所在周的周报
+python redmine_weekly_report.py -d 2024-03-15
+
+# 生成指定年份的所有周报
+python redmine_weekly_report.py -a -y 2024
 ```
 
-2. 程序会自动：
-   - 创建 `weekly_reports_2024` 目录
-   - 生成每周的工作报告
-   - 生成年度汇总报告
+### 命令行参数
 
-## 报告格式
+- `-h, --help`: 显示帮助信息
+- `-d DATE, --date DATE`: 生成指定日期所在周的报告 (格式: YYYY-MM-DD)
+- `-a, --all`: 生成整年的所有周报
+- `-y YEAR, --year YEAR`: 指定年份 (默认为当前年份)
 
-### 周报格式
+### 输出文件
 
-```markdown
-# 本周工作总结
+报告将保存在 `weekly_reports_YYYY` 目录下:
 
-**时间范围：** 2024-01-01 至 2024-01-07
+- `week_XX_YYYYMMDD-YYYYMMDD.md`: 单周报告
+- `weekly_summary_YYYY.md`: 年度周报汇总 (仅在生成整年报告时创建)
+- `yearly_summary_YYYY.md`: 年度工作总结 (仅在生成整年报告时创建)
 
-### 项目名称
-- [问题标题](问题链接) (#问题编号) [问题状态]
-```
+## 配置说明
 
-### 年度汇总格式
+### config.ini
 
-```markdown
-# 2024年工作总结
-
-## 一、主要工作
-
-### 数据统计
-
-| 指标 | 数值 |
-|------|------|
-| 主要负责问题总数 | 157 |
-| 涉及项目数 | 5 |
-| 已解决问题数 | 123 |
-| 进行中问题数 | 28 |
-
-### 项目分布
-
-| 项目 | 问题数 | 占比 |
-|------|--------|------|
-| GoXceed软件平台 | 78 | 49.7% |
-| 软件基础平台 | 45 | 28.7% |
-
-### 详细列表
-
-#### GoXceed软件平台
-
-##### 已解决
-- [修复音频驱动问题](问题链接) (#397457)
-- [更新驱动文档](问题链接) (#397458)
-
----
-
-## 二、参与协助
-
-### 数据统计
-
-| 指标 | 数值 |
-|------|------|
-| 参与协助问题总数 | 37 |
-| 涉及项目数 | 3 |
-...
+```ini
+[redmine]
+url = https://your-redmine-url # Redmine 服务器地址
+username = your-username # 用户名
+password = your-password # 密码
+user_id = your-user-id # 用户 ID
 ```
 
 ## 注意事项

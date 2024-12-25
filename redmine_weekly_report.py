@@ -1,3 +1,4 @@
+import argparse
 from redminelib import Redmine
 from datetime import datetime, timedelta
 import pytz
@@ -318,7 +319,23 @@ def load_config():
     config.read(config_file, encoding='utf-8')
     return config
 
+def parse_date(date_str):
+    """解析日期字符串，支持 YYYY-MM-DD 格式"""
+    try:
+        return datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        raise argparse.ArgumentTypeError(f'Invalid date format: {date_str}. Please use YYYY-MM-DD')
+
 def main():
+    # 添加命令行参数解析
+    parser = argparse.ArgumentParser(description='Generate Redmine weekly reports')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-d', '--date', type=parse_date, help='Generate report for the week containing this date (YYYY-MM-DD)')
+    group.add_argument('-a', '--all', action='store_true', help='Generate reports for all weeks in the year')
+    parser.add_argument('-y', '--year', type=int, help='Specify year for report generation (default: current year)')
+    
+    args = parser.parse_args()
+
     # 加载配置
     config = load_config()
     
@@ -327,15 +344,29 @@ def main():
     USERNAME = config['redmine']['username']
     PASSWORD = config['redmine']['password']
     USER_ID = config['redmine'].getint('user_id')
-    YEAR = config['report'].getint('year')
+    YEAR = args.year or datetime.now().year
     
     # 创建报告实例
     reporter = RedmineWeeklyReport(REDMINE_URL, username=USERNAME, password=PASSWORD)
     
-    # 生成整年报告
-    reports = reporter.generate_yearly_reports(USER_ID, YEAR)
+    if args.all:
+        # 生成整年报告
+        reports = reporter.generate_yearly_reports(USER_ID, YEAR)
+    else:
+        # 获取指定日期或本周的报告
+        if args.date:
+            target_date = args.date
+        else:
+            target_date = datetime.now().date()
+        
+        # 计算目标日期所在的周一和周日
+        monday = target_date - timedelta(days=target_date.weekday())
+        sunday = monday + timedelta(days=6)
+        
+        report = reporter.generate_weekly_report(USER_ID, monday, sunday)
+        reports = [(monday, sunday, report)]
     
-    # 保存所有报告
+    # 保存报告
     if reports:
         # 创建年度报告目录
         report_dir = f'weekly_reports_{YEAR}'
@@ -343,7 +374,6 @@ def main():
         
         # 保存每周报告
         for monday, sunday, report in reports:
-            # 使用周数作为文件名
             week_num = monday.isocalendar()[1]
             filename = f'{report_dir}/week_{week_num:02d}_{monday.strftime("%Y%m%d")}-{sunday.strftime("%Y%m%d")}.md'
             
@@ -351,30 +381,30 @@ def main():
                 f.write(report)
             print(f"Saved report to {filename}")
         
-        # 生成周报汇总
-        weekly_summary = f"# {YEAR}年工作周报汇总\n\n"
-        for monday, sunday, report in reports:
-            week_num = monday.isocalendar()[1]
-            # 使用一级标题 (#) 作为周报标题
-            weekly_summary += f"# 第{week_num}周 ({monday.strftime('%Y-%m-%d')} 至 {sunday.strftime('%Y-%m-%d')})\n\n"
-            # 移除原报告中的一级标题，保留其他内容
-            report = report.replace("# 本周工作总结", "## 本周工作总结")
-            weekly_summary += report + "\n---\n\n"
-        
-        # 生成年度项目总结
-        yearly_summary = reporter.generate_yearly_summary(USER_ID, YEAR)
-        
-        # 保存周报汇总
-        weekly_summary_file = f'{report_dir}/weekly_summary_{YEAR}.md'
-        with open(weekly_summary_file, 'w', encoding='utf-8') as f:
-            f.write(weekly_summary)
-        print(f"Saved weekly summary to {weekly_summary_file}")
-        
-        # 保存年度项目总结
-        yearly_summary_file = f'{report_dir}/yearly_summary_{YEAR}.md'
-        with open(yearly_summary_file, 'w', encoding='utf-8') as f:
-            f.write(yearly_summary)
-        print(f"Saved yearly summary to {yearly_summary_file}")
+        if args.all:
+            # 只在生成整年报告时生成汇总
+            # 生成周报汇总
+            weekly_summary = f"# {YEAR}年工作周报汇总\n\n"
+            for monday, sunday, report in reports:
+                week_num = monday.isocalendar()[1]
+                weekly_summary += f"# 第{week_num}周 ({monday.strftime('%Y-%m-%d')} 至 {sunday.strftime('%Y-%m-%d')})\n\n"
+                report = report.replace("# 本周工作总结", "## 本周工作总结")
+                weekly_summary += report + "\n---\n\n"
+            
+            # 生成年度项目总结
+            yearly_summary = reporter.generate_yearly_summary(USER_ID, YEAR)
+            
+            # 保存周报汇总
+            weekly_summary_file = f'{report_dir}/weekly_summary_{YEAR}.md'
+            with open(weekly_summary_file, 'w', encoding='utf-8') as f:
+                f.write(weekly_summary)
+            print(f"Saved weekly summary to {weekly_summary_file}")
+            
+            # 保存年度项目总结
+            yearly_summary_file = f'{report_dir}/yearly_summary_{YEAR}.md'
+            with open(yearly_summary_file, 'w', encoding='utf-8') as f:
+                f.write(yearly_summary)
+            print(f"Saved yearly summary to {yearly_summary_file}")
     else:
         print("No reports generated.")
 
